@@ -1,0 +1,33 @@
+{
+  "name": "workflow-orchestration-engine",
+  "version": "1.0.0",
+  "description": "Enterprise Multi-Tenant Workflow Orchestration Engine with Visual DAG Canvas, MongoDB Isolation Strategies, and Express Middleware",
+  "main": "src/server.js",
+  "type": "module",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js",
+    "test": "node --test tests/*.test.js",
+    "client:dev": "npm --prefix client run dev",
+    "client:build": "npm --prefix client run build"
+  },
+  "keywords": [
+    "dag",
+    "workflow",
+    "orchestration",
+    "multi-tenant",
+    "mongodb",
+    "express",
+    "crypto",
+    "react"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "mongoose": "^8.9.5"
+  }
+}
+

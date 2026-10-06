@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Enterprise Workflow Orchestrator • Visual DAG Canvas</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body class="bg-slate-950 text-slate-100 flex flex-col h-screen w-screen overflow-hidden select-none">
+
+  <!-- 1. Top Navigation Bar -->
+  <header class="h-14 border-b border-slate-800 bg-slate-900/95 px-4 flex items-center justify-between backdrop-blur-md z-30">
+    <div class="flex items-center gap-3">
+      <div class="w-8 h-8 rounded-lg bg-gradient-to-tr from-indigo-500 to-cyan-400 flex items-center justify-center font-bold text-white shadow-md shadow-indigo-500/30">
+        Ω
+      </div>
+      <div>
+        <div class="flex items-center gap-2">
+          <span class="font-bold text-sm tracking-tight text-white">Workflow Orchestrator</span>
+          <span class="text-[10px] uppercase font-mono px-1.5 py-0.5 rounded bg-indigo-950 text-indigo-400 border border-indigo-800/40">
+            DAG Canvas
+          </span>
+        </div>
+        <span id="workflow-name-display" class="text-xs text-slate-400 font-mono">
+          E-Commerce Order Pipeline
+        </span>
+      </div>
+    </div>
+
+    <!-- Center Tenant Selector -->
+    <div class="hidden md:flex items-center gap-2 bg-slate-950/80 px-3 py-1.5 rounded-xl border border-slate-800">
+      <span class="text-[11px] text-slate-400 font-medium">Tenant Context:</span>
+      <select id="tenant-select" class="bg-transparent text-xs font-semibold text-cyan-300 focus:outline-none cursor-pointer">
+        <option value="acme_corp">Acme Corp (Enterprise • Dynamic Dedicated Multi-DB)</option>
+        <option value="zenith_ai">Zenith AI (Pro • Discriminator Key Partition)</option>
+        <option value="community_lab">Open Community (Free • Shared Partition)</option>
+      </select>
+      <span id="tenant-strategy-badge" class="text-[10px] font-mono px-2 py-0.5 rounded-full border bg-emerald-950/80 text-emerald-400 border-emerald-800/50">
+        Dedicated DB Pool
+      </span>
+    </div>
+
+    <!-- Right Controls -->
+    <div class="flex items-center gap-2">
+      <button id="btn-issue-key" class="px-3 py-1.5 text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg border border-slate-700 transition-colors flex items-center gap-1.5 shadow-sm">
+        <span>🔑</span> Cryptographic API Key
+      </button>
+      <button id="btn-save-workflow" class="px-3 py-1.5 text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg shadow-md shadow-indigo-600/30 transition-colors">
+        Save Workflow
+      </button>
+    </div>
+  </header>
+
+  <!-- 2. Interactive DAG Canvas -->
+  <main id="canvas-container">
+    <!-- Viewport Controls -->
+    <div class="absolute top-4 left-4 z-40 flex items-center gap-2 bg-slate-900/90 border border-slate-800 rounded-xl p-1.5 shadow-xl backdrop-blur-md">
+      <button id="btn-zoom-in" class="w-7 h-7 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-sm flex items-center justify-center font-bold">+</button>
+      <span id="zoom-level-text" class="text-[11px] font-mono text-slate-300 px-1 min-w-[42px] text-center">100%</span>
+      <button id="btn-zoom-out" class="w-7 h-7 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-sm flex items-center justify-center font-bold">-</button>
+      <div class="h-4 w-px bg-slate-800 mx-1"></div>
+      <button id="btn-zoom-reset" class="px-2 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs transition-colors">Reset</button>
+    </div>
+
+    <!-- Node Creation Toolbar -->
+    <div class="absolute top-4 right-4 z-40 flex items-center gap-1.5 bg-slate-900/90 border border-slate-800 rounded-xl p-1.5 shadow-xl backdrop-blur-md">
+      <span class="text-[11px] font-semibold text-slate-400 px-2 uppercase tracking-wider">Add:</span>
+      <button id="btn-add-webhook" class="px-2.5 py-1 text-xs font-medium rounded-lg bg-cyan-950 text-cyan-300 hover:bg-cyan-900 border border-cyan-800/40">+ Webhook</button>
+      <button id="btn-add-branch" class="px-2.5 py-1 text-xs font-medium rounded-lg bg-amber-950 text-amber-300 hover:bg-amber-900 border border-amber-800/40">+ Branch (If/Else)</button>
+      <button id="btn-add-http" class="px-2.5 py-1 text-xs font-medium rounded-lg bg-indigo-950 text-indigo-300 hover:bg-indigo-900 border border-indigo-800/40">+ HTTP Request</button>
+      <button id="btn-add-transform" class="px-2.5 py-1 text-xs font-medium rounded-lg bg-indigo-950 text-indigo-300 hover:bg-indigo-900 border border-indigo-800/40">+ Transform</button>
+      <button id="btn-add-terminal" class="px-2.5 py-1 text-xs font-medium rounded-lg bg-emerald-950 text-emerald-300 hover:bg-emerald-900 border border-emerald-800/40">+ Terminal</button>
+    </div>
+
+    <!-- World Space Container (Zoom & Pan applied) -->
+    <div id="world-space">
+      <!-- SVG Connection Lines -->
+      <svg id="edges-svg" class="absolute inset-0 w-[5000px] h-[5000px] pointer-events-none overflow-visible">
+        <defs>
+          <marker id="arrow-default" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+            <path d="M 0 1 L 10 5 L 0 9 z" fill="#6366f1" />
+          </marker>
+          <marker id="arrow-true" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+            <path d="M 0 1 L 10 5 L 0 9 z" fill="#10b981" />
+          </marker>
+          <marker id="arrow-false" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+            <path d="M 0 1 L 10 5 L 0 9 z" fill="#f43f5e" />
+          </marker>
+          <marker id="arrow-cyclic" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+            <path d="M 0 1 L 10 5 L 0 9 z" fill="#ef4444" />
+          </marker>
+          <marker id="arrow-selected" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M 0 1 L 10 5 L 0 9 z" fill="#a855f7" />
+          </marker>
+        </defs>
+        <g id="edges-group"></g>
+        <path id="temp-edge" d="" fill="none" stroke="#818cf8" stroke-width="2.5" stroke-dasharray="4,4" class="hidden"></path>
+      </svg>
+
+      <!-- HTML Nodes Layer -->
+      <div id="nodes-layer" class="absolute inset-0 pointer-events-auto"></div>
+    </div>
+  </main>
+
+  <!-- 3. Bottom Validation & Control Panel -->
+  <footer id="validation-panel" class="h-16 bg-slate-900/95 border-t border-slate-800 px-4 flex items-center justify-between backdrop-blur-xl z-30">
+    <div class="flex items-center gap-3 flex-1 min-w-0">
+      <div id="status-badge-container">
+        <!-- Status Pill injected via JS -->
+      </div>
+      <div id="topo-order-container" class="hidden md:flex items-center gap-1.5 text-xs text-slate-400 overflow-x-auto">
+        <!-- Topological sort sequence injected via JS -->
+      </div>
+    </div>
+
+    <!-- Quick Presets & Simulator Trigger -->
+    <div class="flex items-center gap-2">
+      <button id="btn-preset-branching" class="px-3 py-1.5 text-xs font-medium bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg border border-slate-700 transition-colors">
+        Branching Preset
+      </button>
+      <button id="btn-preset-cycle" class="px-3 py-1.5 text-xs font-medium bg-rose-950/40 hover:bg-rose-900/60 text-rose-300 rounded-lg border border-rose-800/40 transition-colors">
+        Cycle Test Preset
+      </button>
+      <button id="btn-open-sim" class="px-4 py-1.5 text-xs font-semibold bg-gradient-to-r from-indigo-500 to-cyan-500 hover:from-indigo-600 hover:to-cyan-600 text-white rounded-lg shadow-md shadow-indigo-500/25 transition-all flex items-center gap-1.5">
+        <span>▶</span> Run Simulation
+      </button>
+    </div>
+  </footer>
+
+  <!-- 4. Node Configuration Inspector Modal -->
+  <div id="node-modal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-md shadow-2xl overflow-hidden flex flex-col">
+      <div class="p-4 border-b border-slate-800 flex items-center justify-between">
+        <div>
+          <span id="modal-node-type-badge" class="text-[10px] font-mono font-bold uppercase px-2 py-0.5 rounded bg-indigo-950 text-indigo-400 border border-indigo-800/40">ACTION</span>
+          <h3 id="modal-node-title" class="text-base font-semibold text-slate-100 mt-1">Configure Node</h3>
+        </div>
+        <button id="modal-close-btn" class="text-slate-400 hover:text-white p-1 rounded-lg">✕</button>
+      </div>
+
+      <div class="p-4 space-y-4 overflow-y-auto max-h-[65vh]">
+        <div>
+          <label class="block text-xs font-semibold text-slate-300 mb-1">Node Label</label>
+          <input id="modal-input-label" type="text" class="w-full bg-slate-950 text-xs text-slate-100 px-3 py-2 rounded-lg border border-slate-800 focus:border-indigo-500 focus:outline-none">
+        </div>
+
+        <div id="modal-dynamic-fields" class="space-y-3">
+          <!-- Dynamic fields inserted by JS based on subtype -->
+        </div>
+
+        <div id="modal-validation-alerts" class="hidden p-3 bg-red-950/40 border border-red-800/40 rounded-lg text-xs text-red-300 space-y-1"></div>
+      </div>
+
+      <div class="p-4 border-t border-slate-800 bg-slate-950/50 flex items-center justify-between">
+        <button id="modal-delete-node-btn" class="px-3 py-1.5 text-xs text-red-400 hover:text-red-300 hover:bg-red-950/30 rounded-lg transition-colors border border-red-900/40">
+          Delete Node
+        </button>
+        <div class="flex gap-2">
+          <button id="modal-cancel-btn" class="px-3 py-1.5 text-xs text-slate-400 hover:text-white rounded-lg">Cancel</button>
+          <button id="modal-save-btn" class="px-4 py-1.5 text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg transition-colors">Save</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 5. Simulation Runner Drawer -->
+  <div id="sim-drawer" class="fixed inset-y-0 right-0 w-full sm:w-[480px] bg-slate-900/98 border-l border-slate-800 shadow-2xl z-50 hidden flex-col backdrop-blur-xl">
+    <div class="p-4 border-b border-slate-800 flex items-center justify-between">
+      <div>
+        <h3 class="font-semibold text-slate-100 flex items-center gap-2">
+          <span>⚡</span> DAG Execution Simulator
+        </h3>
+        <p class="text-xs text-slate-400">Step through conditional branching paths</p>
+      </div>
+      <button id="sim-close-btn" class="text-slate-400 hover:text-white p-1 rounded-lg">✕</button>
+    </div>
+
+    <div class="p-4 border-b border-slate-800/80">
+      <label class="block text-xs font-semibold text-slate-300 mb-1">Input Payload (JSON Variables)</label>
+      <textarea id="sim-payload-input" rows="4" class="w-full bg-slate-950 font-mono text-xs text-cyan-300 p-2.5 rounded-lg border border-slate-800 focus:border-cyan-500 focus:outline-none">{\n  "amount": 750,\n  "status": 200\n}</textarea>
+      <div class="flex justify-between items-center mt-2">
+        <span class="text-[11px] text-slate-400">Set amount ≥ 500 for TRUE branch, &lt; 500 for FALSE branch</span>
+        <button id="sim-start-btn" class="px-4 py-1.5 text-xs font-semibold bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 text-white rounded-lg shadow-md transition-all">
+          ▶ Start Run
+        </button>
+      </div>
+    </div>
+
+    <div class="flex-1 overflow-y-auto p-4 space-y-2">
+      <div class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Simulation Trace</div>
+      <div id="sim-trace-list" class="space-y-2"></div>
+    </div>
+  </div>
+
+  <!-- 6. Cryptographic API Key Modal -->
+  <div id="key-modal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-lg p-5 shadow-2xl space-y-4">
+      <div class="flex items-center justify-between">
+        <h3 class="font-semibold text-slate-100 flex items-center gap-2">
+          <span>🔑</span> Cryptographic API Key Issued
+        </h3>
+        <button id="key-close-btn" class="text-slate-400 hover:text-white">✕</button>
+      </div>
+
+      <p class="text-xs text-slate-400">
+        Signed using HMAC SHA-256 and verified using constant-time comparison.
+        The secret hash is stored with random salt. Store this raw key securely; it will not be shown again.
+      </p>
+
+      <div class="bg-slate-950 p-3 rounded-lg border border-slate-800">
+        <span class="text-[10px] text-slate-500 uppercase font-mono block mb-1">Authorization Header: Bearer &lt;Key&gt;</span>
+        <code id="key-raw-display" class="text-xs font-mono text-cyan-300 break-all select-all"></code>
+      </div>
+
+      <div class="grid grid-cols-2 gap-2 text-[11px] text-slate-400 bg-slate-950/60 p-2.5 rounded-lg border border-slate-800/80">
+        <div>Tenant: <span id="key-tenant-display" class="text-white font-mono"></span></div>
+        <div>Tier: <span id="key-tier-display" class="text-white font-mono"></span></div>
+        <div class="col-span-2">Scopes: <span id="key-scopes-display" class="text-cyan-400 font-mono"></span></div>
+      </div>
+
+      <div class="flex justify-end gap-2 pt-2">
+        <button id="key-copy-btn" class="px-4 py-1.5 text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg transition-colors">Copy Key</button>
+        <button id="key-done-btn" class="px-3 py-1.5 text-xs text-slate-400 hover:text-white rounded-lg hover:bg-slate-800">Done</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
+
